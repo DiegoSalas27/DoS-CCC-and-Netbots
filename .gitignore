@@ -11,6 +11,7 @@
 \
 ccc
 netbot
+music/*
 
 # Precompiled Headers
 *.gch
