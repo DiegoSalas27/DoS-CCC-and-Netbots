@@ -255,8 +255,7 @@ void threaded(int i)
 	       		}
 	       			
 			send(i, message.c_str(), strlen(message.c_str()), 0);
-			cout << "Server attack sent\n";
-			sleep(1);
+			sleep(2);
 			bot.start = false;
 			start = false;
 		} 

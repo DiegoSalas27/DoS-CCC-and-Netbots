@@ -40,7 +40,7 @@ int main()
 	}
 
 	send(sock, hello, strlen(hello), 0);
-	cout << "Hello message sent\n";
+	cout << "Netbot connected successfully!!!\n";
 	
 	signal(SIGINT, signal_callback_handler);
 	
