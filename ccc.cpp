@@ -489,8 +489,14 @@ void main_menu()
 	} while(int_choice != 3);
 }
 
+void signal_callback_handler(int signum) {
+   if (pid > 0) kill(-pid, SIGKILL);
+   exit(signum);
+}
+
 int main()
 {	
+	signal(SIGINT, signal_callback_handler);
 	main_menu();
 	if (pid > 0) kill(-pid, SIGKILL);
 	cout << "\nThank you for using dominic's CCC. Have a great day!";

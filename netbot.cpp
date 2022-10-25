@@ -11,6 +11,13 @@
 
 using namespace std;
 
+pid_t pid;
+	
+void signal_callback_handler(int signum) {
+   if (pid > 0) kill(-pid, SIGKILL);
+   exit(signum);
+}
+
 int main()
 {
 	int sock = 0, valread, client_fd;
@@ -35,7 +42,7 @@ int main()
 	send(sock, hello, strlen(hello), 0);
 	cout << "Hello message sent\n";
 	
-	pid_t pid;
+	signal(SIGINT, signal_callback_handler);
 	
 	while(true)
 	{
