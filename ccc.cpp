@@ -392,10 +392,11 @@ void music_menu()
 {	 	
  	char char_choice[1];
 	int int_choice = 0;
-	do
+
+	while(true)
 	{
 		vector<string> music_list;
-		string path = "/home/kali/Desktop/CCC DoS/music";
+		string path = string(get_current_dir_name()) + string("/music");
 	    	for (const auto & entry : filesystem::directory_iterator(path)) {
 	    		music_list.push_back(format_filename_output(entry.path()));
 	    	}
@@ -413,25 +414,27 @@ void music_menu()
 		cin >> char_choice;
 		int_choice = atoi(char_choice);
 		
-		
-		switch(int_choice) 
-		{	
-			case 1 ... 5:
-				play_music(music_list[int_choice - 1]);
-				break;
-			case 6:
+		if (int_choice >= 1 && int_choice <= music_list.size()) 
+		{
+			play_music(music_list[int_choice - 1]);
+		}
+		else if (int_choice > music_list.size() && (int_choice - music_list.size()) <= 2)
+		{
+			if ((int_choice - music_list.size()) == 1)
+			{
 				if (pid > 0) {
 					kill(-pid, SIGKILL);
 					cout << "\nMusic stopped: " << pid;
 				}
-				break;
-			case 7:
-				break;
-			default:
-				cout << "Wrong choice. Enter option again.";
-				break;
+			} else {
+				return;
+			}
 		}
-	} while (int_choice != 7);
+		else
+		{
+			cout << "Wrong choice. Enter option again.";
+		}
+	}
 }
 
 void main_menu()
