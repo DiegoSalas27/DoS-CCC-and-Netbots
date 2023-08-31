@@ -17,7 +17,7 @@ This project was developed in C++. Both botnets and the CCC communicate with eac
 
 * arpa/inet.h: provides definition for internet operations such as inet_addr which was used to convert an IP in the standard dot notation to an integer suitable for use as an Internet address (https://pubs.opengroup.org/onlinepubs/7908799/xns/inet_addr.html), it also provides the htons function to convert an unsigned short integer to a network byte order (https://www.ibm.com/docs/en/zos/2.4.0?topic=lf-htons-translate-unsigned-short-integer-into-network-byte-order)
 
-* thread: was used to create threads a every single botnet so that they could execute commands concurrently in a multithreading environment.
+* thread: was used to create threads for every single botnet so that they could execute commands concurrently in a multithreading environment.
   * detach method was used to allow threads to execute independently from each other. This also helped the CCC not being blocked when new connections from botnets where stablished.
  
 * signal.h: used to interrupt current execution of a DoS attack from a botnet when the pause command or a new attack from CCC was issued.
