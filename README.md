@@ -27,4 +27,4 @@ This project was developed in C++. Both botnets and the CCC communicate with eac
 * You will have to place all virtual machines you are working with (The one containing the CCC, botnets, and the victim's machine) in the same network. By default NAT adapter option is assigned to newly created VMs so they won't be able to communicate with each other.
 * Use a NAT Network adapter option in the network settings of your VM. This will place VMs in one virtual router (in the same network). With this the CCC will be able to issue commands to the botnets and the DoS attacks will reach the victim's machine.
 
-DDoS Demo: https://www.youtube.com/watch?v=SXk91oJcPMw&t=42s
+DDoS Demo: https://www.youtube.com/watch?v=V0aIa173xyg
